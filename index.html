@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ゲームコレクション管理</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .dark {
+            background: linear-gradient(to bottom right, #1f2937, #111827);
+        }
+        .light {
+            background: linear-gradient(to bottom right, #faf5ff, #eff6ff);
+        }
+        .transition-all {
+            transition: all 0.3s ease;
+        }
+    </style>
+</head>
+<body class="light min-h-screen p-6 transition-all" id="body">
+    <div class="max-w-6xl mx-auto">
+        <!-- Header -->
+        <div class="bg-white rounded-lg shadow-lg p-6 mb-6 transition-all" id="header">
+            <div class="flex justify-between items-center mb-4">
+                <h1 class="text-3xl font-bold text-gray-800" id="title">🎮 ゲームコレクション</h1>
+                <button onclick="toggleDarkMode()" class="p-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 transition" id="themeBtn">
+                    <span id="themeIcon">🌙</span>
+                </button>
+            </div>
+            
+            <div class="flex flex-col md:flex-row gap-4 mb-4">
+                <!-- Search -->
+                <div class="flex-1 relative">
+                    <input type="text" id="searchInput" placeholder="ゲームタイトルやジャンルで検索..." 
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" 
+                           onkeyup="filterGames()">
+                </div>
+
+                <!-- Filters -->
+                <div class="flex gap-2">
+                    <select id="platformFilter" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" onchange="filterGames()">
+                        <option value="all">全プラットフォーム</option>
+                    </select>
+
+                    <select id="statusFilter" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" onchange="filterGames()">
+                        <option value="all">全ステータス</option>
+                        <option value="unplayed">未プレイ</option>
+                        <option value="playing">プレイ中</option>
+                        <option value="completed">クリア済み</option>
+                        <option value="on-hold">保留中</option>
+                    </select>
+                </div>
+
+                <!-- Add Button -->
+                <button onclick="toggleAddForm()" class="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition whitespace-nowrap">
+                    ➕ 追加
+                </button>
+            </div>
+
+            <!-- Stats -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center" id="stats">
+                <div class="bg-gray-50 p-3 rounded-lg">
+                    <div class="text-2xl font-bold text-gray-800" id="totalCount">0</div>
+                    <div class="text-sm text-gray-600">総数</div>
+                </div>
+                <div class="bg-blue-50 p-3 rounded-lg">
+                    <div class="text-2xl font-bold text-blue-600" id="playingCount">0</div>
+                    <div class="text-sm text-gray-600">プレイ中</div>
+                </div>
+                <div class="bg-green-50 p-3 rounded-lg">
+                    <div class="text-2xl font-bold text-green-600" id="completedCount">0</div>
+                    <div class="text-sm text-gray-600">クリア済み</div>
+                </div>
+                <div class="bg-gray-50 p-3 rounded-lg">
+                    <div class="text-2xl font-bold text-gray-600" id="unplayedCount">0</div>
+                    <div class="text-sm text-gray-600">未プレイ</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Add Form -->
+        <div id="addForm" class="bg-white rounded-lg shadow-lg p-6 mb-6 hidden transition-all">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">新しいゲームを追加</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <input type="text" id="gameTitle" placeholder="ゲームタイトル *" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+                <input type="text" id="gamePlatform" placeholder="プラットフォーム (例: Nintendo Switch) *" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+                <input type="text" id="gameGenre" placeholder="ジャンル (例: RPG, アクション)" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+                <select id="gameStatus" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+                    <option value="unplayed">未プレイ</option>
+                    <option value="playing">プレイ中</option>
+                    <option value="completed">クリア済み</option>
+                    <option value="on-hold">保留中</option>
+                </select>
+                <input type="date" id="gamePurchaseDate" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+                <input type="text" id="gameNotes" placeholder="メモ" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+            </div>
+            <div class="flex gap-2 mt-4">
+                <button onclick="addGame()" class="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition">追加</button>
+                <button onclick="toggleAddForm()" class="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition">キャンセル</button>
+            </div>
+        </div>
+
+        <!-- Games List -->
+        <div id="gamesList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+    </div>
+
+    <script>
+        let games = [];
+        let darkMode = false;
+
+        // Load data
+        function loadData() {
+            const savedGames = localStorage.getItem('games');
+            const savedTheme = localStorage.getItem('darkMode');
+            
+            if (savedGames) {
+                games = JSON.parse(savedGames);
+            }
+            
+            if (savedTheme === 'true') {
+                darkMode = true;
+                applyDarkMode();
+            }
+            
+            updatePlatformFilter();
+            renderGames();
+            updateStats();
+        }
+
+        // Dark mode
+        function toggleDarkMode() {
+            darkMode = !darkMode;
+            localStorage.setItem('darkMode', darkMode);
+            applyDarkMode();
+        }
+
+        function applyDarkMode() {
+            const body = document.getElementById('body');
+            const header = document.getElementById('header');
+            const addForm = document.getElementById('addForm');
+            const themeIcon = document.getElementById('themeIcon');
+            const themeBtn = document.getElementById('themeBtn');
+            const title = document.getElementById('title');
+            
+            if (darkMode) {
+                body.classList.remove('light');
+                body.classList.add('dark');
+                header.classList.remove('bg-white');
+                header.classList.add('bg-gray-800');
+                addForm.classList.remove('bg-white');
+                addForm.classList.add('bg-gray-800');
+                title.classList.remove('text-gray-800');
+                title.classList.add('text-white');
+                themeIcon.textContent = '☀️';
+                themeBtn.classList.remove('bg-gray-100', 'text-gray-700', 'hover:bg-gray-200');
+                themeBtn.classList.add('bg-gray-700', 'text-yellow-400', 'hover:bg-gray-600');
+            } else {
+                body.classList.remove('dark');
+                body.classList.add('light');
+                header.classList.remove('bg-gray-800');
+                header.classList.add('bg-white');
+                addForm.classList.remove('bg-gray-800');
+                addForm.classList.add('bg-white');
+                title.classList.remove('text-white');
+                title.classList.add('text-gray-800');
+                themeIcon.textContent = '🌙';
+                themeBtn.classList.remove('bg-gray-700', 'text-yellow-400', 'hover:bg-gray-600');
+                themeBtn.classList.add('bg-gray-100', 'text-gray-700', 'hover:bg-gray-200');
+            }
+        }
+
+        // Toggle add form
+        function toggleAddForm() {
+            const form = document.getElementById('addForm');
+            form.classList.toggle('hidden');
+        }
+
+        // Add game
+        function addGame() {
+            const title = document.getElementById('gameTitle').value;
+            const platform = document.getElementById('gamePlatform').value;
+            const genre = document.getElementById('gameGenre').value;
+            const status = document.getElementById('gameStatus').value;
+            const purchaseDate = document.getElementById('gamePurchaseDate').value;
+            const notes = document.getElementById('gameNotes').value;
+
+            if (!title || !platform) {
+                alert('タイトルとプラットフォームは必須です');
+                return;
+            }
+
+            const game = {
+                id: Date.now(),
+                title,
+                platform,
+                genre,
+                status,
+                purchaseDate,
+                notes
+            };
+
+            games.push(game);
+            localStorage.setItem('games', JSON.stringify(games));
+
+            // Clear form
+            document.getElementById('gameTitle').value = '';
+            document.getElementById('gamePlatform').value = '';
+            document.getElementById('gameGenre').value = '';
+            document.getElementById('gameStatus').value = 'unplayed';
+            document.getElementById('gamePurchaseDate').value = '';
+            document.getElementById('gameNotes').value = '';
+
+            toggleAddForm();
+            updatePlatformFilter();
+            renderGames();
+            updateStats();
+        }
+
+        // Delete game
+        function deleteGame(id) {
+            if (confirm('このゲームを削除しますか?')) {
+                games = games.filter(game => game.id !== id);
+                localStorage.setItem('games', JSON.stringify(games));
+                updatePlatformFilter();
+                renderGames();
+                updateStats();
+            }
+        }
+
+        // Update game status
+        function updateStatus(id, newStatus) {
+            const game = games.find(g => g.id === id);
+            if (game) {
+                game.status = newStatus;
+                localStorage.setItem('games', JSON.stringify(games));
+                renderGames();
+                updateStats();
+            }
+        }
+
+        // Update platform filter
+        function updatePlatformFilter() {
+            const platformFilter = document.getElementById('platformFilter');
+            const platforms = [...new Set(games.map(g => g.platform))];
+            
+            const currentValue = platformFilter.value;
+            platformFilter.innerHTML = '<option value="all">全プラットフォーム</option>';
+            
+            platforms.forEach(platform => {
+                const option = document.createElement('option');
+                option.value = platform;
+                option.textContent = platform;
+                platformFilter.appendChild(option);
+            });
+            
+            platformFilter.value = currentValue;
+        }
+
+        // Filter games
+        function filterGames() {
+            renderGames();
+        }
+
+        // Render games
+        function renderGames() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const platformFilter = document.getElementById('platformFilter').value;
+            const statusFilter = document.getElementById('statusFilter').value;
+            
+            const filteredGames = games.filter(game => {
+                const matchesSearch = game.title.toLowerCase().includes(searchTerm) || 
+                                    game.genre.toLowerCase().includes(searchTerm);
+                const matchesPlatform = platformFilter === 'all' || game.platform === platformFilter;
+                const matchesStatus = statusFilter === 'all' || game.status === statusFilter;
+                return matchesSearch && matchesPlatform && matchesStatus;
+            });
+
+            const gamesList = document.getElementById('gamesList');
+            
+            if (filteredGames.length === 0) {
+                gamesList.innerHTML = `<div class="col-span-full text-center py-12 ${darkMode ? 'text-gray-400' : 'text-gray-500'}">${games.length === 0 ? 'ゲームを追加してください' : '該当するゲームが見つかりません'}</div>`;
+                return;
+            }
+
+            gamesList.innerHTML = filteredGames.map(game => {
+                const statusLabels = {
+                    'unplayed': '未プレイ',
+                    'playing': 'プレイ中',
+                    'completed': 'クリア済み',
+                    'on-hold': '保留中'
+                };
+                
+                const statusColors = {
+                    'unplayed': 'bg-gray-100 text-gray-700',
+                    'playing': 'bg-blue-100 text-blue-700',
+                    'completed': 'bg-green-100 text-green-700',
+                    'on-hold': 'bg-yellow-100 text-yellow-700'
+                };
+
+                return `
+                    <div class="${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-md p-4 hover:shadow-lg transition-all">
+                        <div class="flex justify-between items-start mb-2">
+                            <h3 class="font-bold text-lg ${darkMode ? 'text-white' : 'text-gray-800'} flex-1">${game.title}</h3>
+                            <button onclick="deleteGame(${game.id})" class="text-red-500 hover:text-red-700 transition">🗑️</button>
+                        </div>
+                        <div class="space-y-2 text-sm">
+                            <div class="${darkMode ? 'text-gray-300' : 'text-gray-600'}">
+                                <span class="font-semibold">プラットフォーム:</span> ${game.platform}
+                            </div>
+                            ${game.genre ? `<div class="${darkMode ? 'text-gray-300' : 'text-gray-600'}"><span class="font-semibold">ジャンル:</span> ${game.genre}</div>` : ''}
+                            <div>
+                                <select onchange="updateStatus(${game.id}, this.value)" class="px-3 py-1 rounded-full text-sm font-medium ${statusColors[game.status]}">
+                                    <option value="unplayed" ${game.status === 'unplayed' ? 'selected' : ''}>未プレイ</option>
+                                    <option value="playing" ${game.status === 'playing' ? 'selected' : ''}>プレイ中</option>
+                                    <option value="completed" ${game.status === 'completed' ? 'selected' : ''}>クリア済み</option>
+                                    <option value="on-hold" ${game.status === 'on-hold' ? 'selected' : ''}>保留中</option>
+                                </select>
+                            </div>
+                            ${game.purchaseDate ? `<div class="${darkMode ? 'text-gray-300' : 'text-gray-600'}"><span class="font-semibold">購入日:</span> ${game.purchaseDate}</div>` : ''}
+                            ${game.notes ? `<div class="${darkMode ? 'text-gray-300 border-gray-600' : 'text-gray-600 border-gray-200'} mt-2 pt-2 border-t">${game.notes}</div>` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Update stats
+        function updateStats() {
+            document.getElementById('totalCount').textContent = games.length;
+            document.getElementById('playingCount').textContent = games.filter(g => g.status === 'playing').length;
+            document.getElementById('completedCount').textContent = games.filter(g => g.status === 'completed').length;
+            document.getElementById('unplayedCount').textContent = games.filter(g => g.status === 'unplayed').length;
+        }
+
+        // Initialize
+        loadData();
+    </script>
+</body>
+</html>
